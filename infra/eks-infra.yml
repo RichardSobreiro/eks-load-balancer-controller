@@ -1,0 +1,548 @@
+
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  EKSClusterName:
+    Type: String
+    Default: EksCluster01
+    Description: The desired name of your AWS EKS Cluster.
+  EKSVersion:
+    Type: String
+    Default: 1.18
+    AllowedValues: 
+      - 1.16
+      - 1.17
+      - 1.18
+    Description: The desired version of your AWS EKS Cluster.
+  EKSNodeGroupName:
+    Type: String
+    Default: NodeGroup01
+    Description: The desired name of your AWS EKS Node Group.
+  EKSDesiredWorkerNode:
+    Type: Number
+    Default: 1
+    Description: Number of desired Worker Node.
+    MinValue: 1
+    MaxValue: 12
+  EKSWorkerNodeInstanceType:
+    Type: String
+    Default: t2.small
+    AllowedValues: [t2.nano, t2.micro, t2.small, t2.medium, t2.large, t2.xlarge, t2.2xlarge,
+      t3.nano, t3.micro, t3.small, t3.medium, t3.large, t3.xlarge, t3.2xlarge,
+      m4.large, m4.xlarge, m4.2xlarge, m4.4xlarge, m4.10xlarge,
+      m5.large, m5.xlarge, m5.2xlarge, m5.4xlarge,
+      c5.large, c5.xlarge, c5.2xlarge, c5.4xlarge, c5.9xlarge,
+      g3.8xlarge,r5.large, r5.xlarge, r5.2xlarge, r5.4xlarge, r3.12xlarge,
+      i3.xlarge, i3.2xlarge, i3.4xlarge, i3.8xlarge,
+      d2.xlarge, d2.2xlarge, d2.4xlarge, d2.8xlarge]
+    ConstraintDescription: Must be a valid EC2 instance type
+    Description: EC2 instance type for the node instances.
+  EKSIAMRoleName:
+    Type: String
+    Default: EKSClusterRole
+    Description: The name of the IAM role for the EKS service to assume.
+  EKSKeyPair:
+    Type: "AWS::EC2::KeyPair::KeyName"
+    Default: "eks-key-pair"
+    Description: The name of Key Pair to etasblish connection with Worker Node.
+  VpcBlock:
+    Type: String
+    Default: 10.0.0.0/16
+    Description: The CIDR range for the VPC. This should be a valid private (RFC 1918) CIDR range.
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x.
+  PublicSubnet01Block:
+    Type: String
+    Default: 10.0.0.0/24
+    Description: CidrBlock for public subnet 01 within the VPC.
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+  PublicSubnet02Block:
+    Type: String
+    Default: 10.0.1.0/24
+    Description: CidrBlock for public subnet 02 within the VPC.
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+  PublicSubnet03Block:
+    Type: String
+    Default: 10.0.2.0/24
+    Description: CidrBlock for public subnet 03 within the VPC.
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+  PrivateSubnet01Name:
+    Type: String
+    Default: "EKS-Cluster-PrivateSubnet01"
+  PrivateSubnet01Block:
+    Type: String
+    Default: 10.0.3.0/24
+    Description: CidrBlock for private subnet 01 within the VPC.
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+  PrivateSubnet02Name:
+    Type: String
+    Default: "EKS-Cluster-PrivateSubnet02"
+  PrivateSubnet02Block:
+    Type: String
+    Default: 10.0.4.0/24
+    Description: CidrBlock for private subnet 02 within the VPC.
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+  PrivateSubnet03Name:
+    Type: String
+    Default: "EKS-Cluster-PrivateSubnet03"
+  PrivateSubnet03Block:
+    Type: String
+    Default: 10.0.5.0/24
+    Description: CidrBlock for private subnet 03 within the VPC.
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+  AvailabilityZoneSubnet01:
+    Type: CommaDelimitedList<AWS::EC2::AvailabilityZone::Name>
+    Default: sa-east-1a
+    Description: Availability Zone for the Public Subnet 01. 
+  AvailabilityZoneSubnet02:
+    Type: CommaDelimitedList<AWS::EC2::AvailabilityZone::Name>
+    Default: sa-east-1b
+    Description: Availability Zone for the Public Subnet 02.
+  AvailabilityZoneSubnet03:
+    Type: CommaDelimitedList<AWS::EC2::AvailabilityZone::Name>
+    Default: sa-east-1c
+    Description: Availability Zone for the Public Subnet 02.
+  EC2InstanceTypeBastionHost:
+    Type: String
+    Default: t2.nano
+  EC2AMI:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
+  KeyName:
+    Type: String
+    Default: bastion-host-key-pair
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+    -
+      Label:
+        default: "Worker Network Configuration"
+      Parameters:
+        - VpcBlock
+        - PublicSubnet01Block
+        - PrivateSubnet01Block
+        - AvailabilityZoneSubnet01
+        - PublicSubnet02Block
+        - PrivateSubnet02Block
+        - AvailabilityZoneSubnet02
+        - PublicSubnet03Block
+        - PrivateSubnet03Block
+        - AvailabilityZoneSubnet03      
+
+    -
+      Label:
+        default: "EKS Cluster Information"
+      Parameters:
+        - EKSClusterName
+        - EKSVersion
+        - EKSNodeGroupName
+        - EKSDesiredWorkerNode
+        - EKSWorkerNodeInstanceType
+        - EKSIAMRoleName
+        - EKSKeyPair
+
+Mappings:
+  ServicePrincipals:
+    aws-cn:
+      ec2: ec2.amazonaws.com.cn
+    aws-us-gov:
+      ec2: ec2.amazonaws.com
+    aws:
+      ec2: ec2.amazonaws.com
+
+Resources:
+  EksVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcBlock
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-VPC'
+        - Key: Project
+          Value: aws-eks-load-balancer-controller
+
+  EksInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-InternetGateway'
+        - Key: Project
+          Value: aws-eks-load-balancer-controller
+    
+  EksVPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref EksInternetGateway
+      VpcId: !Ref EksVPC
+  
+  EksPublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref EksVPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-Public-RouteTable'
+        - Key: Project
+          Value: aws-eks-load-balancer-controller
+
+  EksPublicRoute:
+    DependsOn: EksVPCGatewayAttachment
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref EksPublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref EksInternetGateway
+
+  EksPublicSubnet01:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Ref AvailabilityZoneSubnet01
+      MapPublicIpOnLaunch: true
+      CidrBlock:
+        Ref: PublicSubnet01Block
+      VpcId:
+        Ref: EksVPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-PublicSubnet01"
+        - Key: Project
+          Value: aws-eks-load-balancer-controller
+    
+  EksPublicSubnet02:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Ref AvailabilityZoneSubnet02
+      MapPublicIpOnLaunch: true
+      CidrBlock:
+        Ref: PublicSubnet02Block
+      VpcId:
+        Ref: EksVPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-PublicSubnet02"
+        - Key: Project
+          Value: aws-eks-load-balancer-controller
+
+  EksPublicSubnet03:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Ref AvailabilityZoneSubnet03
+      MapPublicIpOnLaunch: true
+      CidrBlock:
+        Ref: PublicSubnet03Block
+      VpcId:
+        Ref: EksVPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-PublicSubnet03"
+        - Key: Project
+          Value: aws-eks-load-balancer-controller
+  
+  EksPublicSubnet01RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref EksPublicSubnet01
+      RouteTableId: !Ref EksPublicRouteTable
+
+  EksPublicSubnet02RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref EksPublicSubnet02
+      RouteTableId: !Ref EksPublicRouteTable
+
+  EksPublicSubnet03RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref EksPublicSubnet03
+      RouteTableId: !Ref EksPublicRouteTable      
+
+  NatPublicIP01:
+    Type: AWS::EC2::EIP
+    DependsOn: EksVPC
+    Properties:
+      Domain: vpc
+
+  NatGateway01:
+    Type: AWS::EC2::NatGateway
+    DependsOn: [NatPublicIP01, EksPublicSubnet01]
+    Properties: 
+      SubnetId: !Ref EksPublicSubnet01
+      AllocationId: !GetAtt NatPublicIP01.AllocationId
+
+  # NatPublicIP02:
+  #   Type: AWS::EC2::EIP
+  #   DependsOn: EksVPC
+  #   Properties:
+  #     Domain: vpc
+
+  # NatGateway02:
+  #   Type: AWS::EC2::NatGateway
+  #   DependsOn: [NatPublicIP02, EksPublicSubnet02]
+  #   Properties: 
+  #     SubnetId: !Ref EksPublicSubnet02
+  #     AllocationId: !GetAtt NatPublicIP02.AllocationId
+
+  # NatPublicIP03:
+  #   Type: AWS::EC2::EIP
+  #   DependsOn: EksVPC
+  #   Properties:
+  #     Domain: vpc
+
+  # NatGateway03:
+  #   Type: AWS::EC2::NatGateway
+  #   DependsOn: [NatPublicIP03, EksPublicSubnet03]
+  #   Properties: 
+  #     SubnetId: !Ref EksPublicSubnet03
+  #     AllocationId: !GetAtt NatPublicIP03.AllocationId
+
+  EksPrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref EksVPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-Private-RouteTable'
+        - Key: Project
+          Value: aws-eks-load-balancer-controller
+
+  EksPrivateRoute01:
+    DependsOn: EksVPCGatewayAttachment
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref EksPrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway01
+
+  # EksPrivateRoute02:
+  #   DependsOn: EksVPCGatewayAttachment
+  #   Type: AWS::EC2::Route
+  #   Properties:
+  #     RouteTableId: !Ref EksPrivateRouteTable
+  #     DestinationCidrBlock: 0.0.0.0/0
+  #     NatGatewayId: !Ref NatGateway02
+
+  # EksPrivateRoute03:
+  #   DependsOn: EksVPCGatewayAttachment
+  #   Type: AWS::EC2::Route
+  #   Properties:
+  #     RouteTableId: !Ref EksPrivateRouteTable
+  #     DestinationCidrBlock: 0.0.0.0/0
+  #     NatGatewayId: !Ref NatGateway03
+
+  EksPrivateSubnet01:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Ref AvailabilityZoneSubnet01
+      MapPublicIpOnLaunch: true
+      CidrBlock:
+        Ref: PrivateSubnet01Block
+      VpcId:
+        Ref: EksVPC
+      Tags:
+        - Key: Name
+          Value: !Ref PrivateSubnet1
+        - Key: Project
+          Value: aws-eks-load-balancer-controller
+    
+  EksPrivateSubnet02:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Ref AvailabilityZoneSubnet02
+      MapPublicIpOnLaunch: true
+      CidrBlock:
+        Ref: PrivateSubnet02Block
+      VpcId:
+        Ref: EksVPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-PrivateSubnet02"
+        - Key: Project
+          Value: aws-eks-load-balancer-controller
+
+  EksPrivateSubnet03:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Ref AvailabilityZoneSubnet03
+      MapPublicIpOnLaunch: true
+      CidrBlock:
+        Ref: PrivateSubnet03Block
+      VpcId:
+        Ref: EksVPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-PrivateSubnet03"
+        - Key: Project
+          Value: aws-eks-load-balancer-controller
+  
+  EksPrivateSubnet01RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref EksPrivateSubnet01
+      RouteTableId: !Ref EksPrivateRouteTable
+
+  EksPrivateSubnet02RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref EksPrivateSubnet02
+      RouteTableId: !Ref EksPrivateRouteTable
+
+  EksPrivateSubnet03RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref EksPrivateSubnet03
+      RouteTableId: !Ref EksPrivateRouteTable
+
+  EksSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Cluster communication with worker nodes
+      VpcId: !Ref EksVPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-SecurityGroup"
+        - Key: Project
+          Value: aws-eks-load-balancer-controller
+
+  BastionSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription:
+        !Sub 'Security group for ${AWS::StackName} bastion host'
+      VpcId: !Ref EksVPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-BastionHost-SecurityGroup"
+        - Key: Project
+          Value: aws-eks-load-balancer-controller
+
+  VPCLinkSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: API Gateway Comunication with public subnets
+      VpcId: !Ref EksVPC
+      Tags:
+        - Key: Name
+          Value: !Sub "VPCLink-SecurityGroup"
+        - Key: Project
+          Value: aws-eks-load-balancer-controller          
+
+  BastionAllowInboundSSHFromInternet:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref BastionSecurityGroup
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+      CidrIp: 0.0.0.0/0
+  
+  BastionAllowOutboundSSHToApplication:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref BastionSecurityGroup
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+      DestinationSecurityGroupId: !Ref EksSecurityGroup
+  
+  EksSecurityGroupAllowInboundSSHFromBastion:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref EksSecurityGroup
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+      SourceSecurityGroupId: !Ref BastionSecurityGroup
+
+  EksIAMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+              - eks.amazonaws.com
+            Action:
+            - 'sts:AssumeRole'
+      RoleName: !Ref EKSIAMRoleName
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
+
+  EksCluster:
+    Type: AWS::EKS::Cluster
+    Properties:
+      Name: !Ref EKSClusterName
+      Version: !Ref EKSVersion
+      RoleArn:
+        "Fn::GetAtt": ["EksIAMRole", "Arn"]
+      ResourcesVpcConfig:
+        SecurityGroupIds:
+          - !Ref EksSecurityGroup
+        SubnetIds:
+          - !Ref EksPrivateSubnet01
+          - !Ref EksPrivateSubnet02
+          - !Ref EksPrivateSubnet03
+    DependsOn: [EksIAMRole, EksPrivateSubnet01, EksPrivateSubnet02, EksPrivateSubnet03, EksSecurityGroup]
+
+  EksNodeInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - !FindInMap [ServicePrincipals, !Ref "AWS::Partition", ec2]
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/AmazonEKS_CNI_Policy"
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+      Path: /
+
+  EksNodeGroup:
+    Type: AWS::EKS::Nodegroup
+    Properties:
+      ClusterName: !Ref EKSClusterName
+      NodeRole: 
+        "Fn::GetAtt": ["EksNodeInstanceRole", "Arn"]
+      AmiType: AL2_x86_64
+      InstanceTypes: 
+        - !Ref EKSWorkerNodeInstanceType
+      NodegroupName: !Ref EKSNodeGroupName
+      RemoteAccess:
+        Ec2SshKey: !Ref EKSKeyPair
+      ScalingConfig:
+        MinSize: 1
+        DesiredSize: !Ref EKSDesiredWorkerNode
+        MaxSize: 7
+      Labels:
+        Project: aws-eks-load-balancer-controller
+      Subnets:
+        - !Ref EksPrivateSubnet01
+        - !Ref EksPrivateSubnet02
+        - !Ref EksPrivateSubnet03
+    DependsOn: [EksCluster, EksNodeInstanceRole]
+
+Outputs:
+  SubnetIds:
+    Description: Subnets IDs in the EksVPC
+    Value: !Join [ ",", [ !Ref EksPublicSubnet01, !Ref EksPublicSubnet02, !Ref EksPublicSubnet03, !Ref EksPrivateSubnet01, !Ref EksPrivateSubnet02, !Ref EksPrivateSubnet03 ] ]
+  SecurityGroups:
+    Description: Security group for the cluster control plane communication with worker nodes
+    Value: !Join [ ",", [ !Ref EksSecurityGroup ] ]
+  VpcId:
+    Description: The EksVPC Id
+    Value: !Ref EksVPC
