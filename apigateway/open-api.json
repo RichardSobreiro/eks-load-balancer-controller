@@ -13,7 +13,15 @@
                     "connectionId" : "$(kubectl get vpclinks.apigatewayv2.services.k8s.aws nlb-internal -o jsonpath=\"{.status.vpcLinkID}\")",
                     "type" : "http_proxy",
                     "httpMethod" : "GET",
-                    "uri" : "$(aws elbv2 describe-listeners --load-balancer-arn $(aws elbv2 describe-load-balancers --region $AGW_AWS_REGION --query \"LoadBalancers[?contains(DNSName, '$(kubectl get service authorservice -o jsonpath=\"{.status.loadBalancer.ingress[].hostname}\")')].LoadBalancerArn\" --output text) --region $AGW_AWS_REGION --query \"Listeners[0].ListenerArn\" --output text)",
+                    "uri" : "$(aws elbv2 describe-listeners \
+                    --load-balancer-arn $(aws elbv2 describe-load-balancers \
+                    --region $AGW_AWS_REGION \
+                    --query "LoadBalancers[?contains(DNSName, '$(kubectl get service authorservice \
+                    -o jsonpath="{.status.loadBalancer.ingress[].hostname}")')].LoadBalancerArn" \
+                    --output text) \
+                    --region $AGW_AWS_REGION \
+                    --query "Listeners[0].ListenerArn" \
+                    --output text)",
                     "connectionType" : "VPC_LINK"
                 }
             }
@@ -21,7 +29,15 @@
         "/meta": {
             "get": {
                 "x-amazon-apigateway-integration": {
-                    "uri" : "$(aws elbv2 describe-listeners --load-balancer-arn $(aws elbv2 describe-load-balancers --region $AGW_AWS_REGION --query \"LoadBalancers[?contains(DNSName, '$(kubectl get service echoserver -o jsonpath=\"{.status.loadBalancer.ingress[].hostname}\")')].LoadBalancerArn\" --output text) --region $AGW_AWS_REGION --query \"Listeners[0].ListenerArn\" --output text)",
+                    "uri" : "$(aws elbv2 describe-listeners \
+                    --load-balancer-arn $(aws elbv2 describe-load-balancers \
+                    --region $AGW_AWS_REGION \
+                    --query "LoadBalancers[?contains(DNSName, '$(kubectl get service echoserver \
+                    -o jsonpath="{.status.loadBalancer.ingress[].hostname}")')].LoadBalancerArn" \
+                    --output text) \
+                    --region $AGW_AWS_REGION \
+                    --query "Listeners[0].ListenerArn" \
+                    --output text)",
                     "httpMethod": "GET",
                     "connectionId": "$(kubectl get vpclinks.apigatewayv2.services.k8s.aws nlb-internal -o jsonpath=\"{.status.vpcLinkID}\")",
                     "type": "HTTP_PROXY",

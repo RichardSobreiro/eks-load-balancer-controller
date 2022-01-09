@@ -3,6 +3,6 @@ kind: Stage
 metadata:
   name: "apiv1"
 spec:
-  apiID: $(kubectl get apis.apigatewayv2.services.k8s.aws apitest-private-nlb -o=jsonpath='{.status.apiID}')
+  apiID: b025zxcwd8
   stageName: api
   autoDeploy: true
