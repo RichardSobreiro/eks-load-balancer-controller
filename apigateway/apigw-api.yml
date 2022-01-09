@@ -1,0 +1,6 @@
+apiVersion: apigatewayv2.services.k8s.aws/v1alpha1
+kind: API
+metadata:
+  name: apitest-private-nlb
+spec:
+  body: <%= File.read('/open-api.json').inspect %>

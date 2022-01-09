@@ -1,0 +1,12 @@
+apiVersion: apigatewayv2.services.k8s.aws/v1alpha1
+kind: VPCLink
+metadata:
+  name: nlb-internal
+spec:
+  name: nlb-internal
+  securityGroupIDs: 
+    - sg-083897e24efee8eb7
+  subnetIDs: 
+    - subnet-0a5589a870b9bb0ea
+    - subnet-032262ce3b3b44a35
+    - subnet-0367ff2ba6368e16b
