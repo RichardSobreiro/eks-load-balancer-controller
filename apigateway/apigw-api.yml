@@ -15,10 +15,10 @@ spec:
                 "isDefaultRoute" : true,
                 "x-amazon-apigateway-integration" : {
                     "payloadFormatVersion" : "1.0",
-                    "connectionId" : "ay5fxb",
+                    "connectionId" : "289b8t",
                     "type" : "http_proxy",
                     "httpMethod" : "GET",
-                    "uri" : "arn:aws:elasticloadbalancing:sa-east-1:991345343226:listener/net/k8s-default-authorse-6de7f90e55/eb2d2734a04956b6/79a74c287f5b63b1",
+                    "uri" : "arn:aws:elasticloadbalancing:sa-east-1:991345343226:listener/net/k8s-default-authorse-dcc7e5f7e2/577cf814e9dad217/accf24ccc5dfff0a",
                     "connectionType" : "VPC_LINK"
                 }
             }
@@ -26,9 +26,9 @@ spec:
         "/meta": {
             "get": {
                 "x-amazon-apigateway-integration": {
-                    "uri" : "arn:aws:elasticloadbalancing:sa-east-1:991345343226:listener/net/k8s-default-echoserv-681399b682/ac9b066e05b1c041/9c24a1c4d0541e10",
+                    "uri" : "arn:aws:elasticloadbalancing:sa-east-1:991345343226:listener/net/k8s-default-echoserv-6c5f6f2eca/6a7b4427bb20762f/91ce1b29690f6071",
                     "httpMethod": "GET",
-                    "connectionId": "ay5fxb",
+                    "connectionId": "289b8t",
                     "type": "HTTP_PROXY",
                     "connectionType": "VPC_LINK",
                     "payloadFormatVersion": "1.0"

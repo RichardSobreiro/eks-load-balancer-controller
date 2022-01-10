@@ -242,7 +242,7 @@ Next the  following command can be run:
 ```sh
 kubectl apply -f vpclink.yml
 aws apigatewayv2 get-vpc-links --region $AGW_AWS_REGION
-export AGW_VPCLINK_SG = aws ec2 describe-security-groups --filter Name=vpc-id,Values=$AGW_VPC_ID Name=tag:Name,Values=VPCLink-SecurityGroup --query 'SecurityGroups[*].[GroupId]' --output text
+export AGW_VPCLINK_SG=$(aws ec2 describe-security-groups --filter Name=vpc-id,Values=$AGW_VPC_ID Name=tag:Name,Values=VPCLink-SecurityGroup --query 'SecurityGroups[*].[GroupId]' --output text)
 ```
 
 The following commands are very helpful in order to debug problems:
@@ -252,6 +252,47 @@ kubectl describe vpclinks.apigatewayv2.services.k8s.aws nlb-internal
 ```
 
 ## 13 - Create API Gateway API
+
+First, we need to run the aws commands in order to get the VPC Link ID and
+the load balancers uri:
+
+* VPC Link ID:
+
+```sh
+kubectl get vpclinks.apigatewayv2.services.k8s.aws nlb-internal -o jsonpath=\"{.status.vpcLinkID}\"
+```
+
+* Load Balancer URI authorservice:
+
+```sh
+aws elbv2 describe-listeners \
+    --load-balancer-arn $(aws elbv2 describe-load-balancers \
+    --region $AGW_AWS_REGION \
+    --query "LoadBalancers[?contains(DNSName, '$(kubectl get service authorservice \
+    -o jsonpath="{.status.loadBalancer.ingress[].hostname}")')].LoadBalancerArn" \
+    --output text) \
+    --region $AGW_AWS_REGION \
+    --query "Listeners[0].ListenerArn" \
+    --output text
+```
+
+* Load Balancer URI echoserver:
+
+```sh
+aws elbv2 describe-listeners \
+    --load-balancer-arn $(aws elbv2 describe-load-balancers \
+    --region $AGW_AWS_REGION \
+    --query "LoadBalancers[?contains(DNSName, '$(kubectl get service echoserver \
+    -o jsonpath="{.status.loadBalancer.ingress[].hostname}")')].LoadBalancerArn" \
+    --output text) \
+    --region $AGW_AWS_REGION \
+    --query "Listeners[0].ListenerArn" \
+    --output text
+```
+
+You can also find those commands at the apigateway/open-api.json file in order to know the correct place to substitute de id's obtained.
+
+After substituting the id's obtained in the preceeding commands, we need to run the apply:
 
 ```sh
 kubectl apply -f apigw-api.yml
@@ -319,19 +360,19 @@ kubectl delete services authorservice
 sleep 10
 aws ec2 delete-security-group --group-id $AGW_VPCLINK_SG --region $AGW_AWS_REGION 
 helm delete aws-load-balancer-controller --namespace kube-system
-helm delete ack-apigatewayv2-controller --namespace kube-system
+helm delete ack-apigatewayv2-controller --namespace ack-system
 for role in $(aws iam list-roles --query "Roles[?contains(RoleName, \
-  'eksctl-eks-ack-apigw-addon-iamserviceaccount')].RoleName" \
+  'eksctl-EksCluster01-addon-iamserviceaccount')].RoleName" \
   --output text)
 do (aws iam detach-role-policy --role-name $role --policy-arn $(aws iam list-attached-role-policies --role-name $role --query 'AttachedPolicies[0].PolicyArn' --output text))
 done
 for role in $(aws iam list-roles --query "Roles[?contains(RoleName, \
-  'eksctl-eks-ack-apigw-addon-iamserviceaccount')].RoleName" \
+  'eksctl-EksCluster01-apigw-addon-iamserviceaccount')].RoleName" \
   --output text)
 do (aws iam delete-role --role-name $role)
 done
 sleep 5
-aws iam delete-policy --policy-arn $(echo $(aws iam list-policies --query 'Policies[?PolicyName==`ACKIAMPolicy`].Arn' --output text))
-aws iam delete-policy --policy-arn $(echo $(aws iam list-policies --query 'Policies[?PolicyName==`AWSLoadBalancerControllerIAMPolicy-APIGWDEMO`].Arn' --output text))
 aws cloudformation delete-stack --stack-name stack-eks-load-balancer-controller
+aws iam delete-policy --policy-arn $(echo $(aws iam list-policies --query 'Policies[?PolicyName==`ACKIAMPolicy`].Arn' --output text))
+aws iam delete-policy --policy-arn $(echo $(aws iam list-policies --query 'Policies[?PolicyName==`AWSLoadBalancerControllerIAMPolicy-APIGWEksCluster01`].Arn' --output text))
 ```

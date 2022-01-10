@@ -40,7 +40,11 @@ Parameters:
     Description: EC2 instance type for the node instances.
   EKSIAMRoleName:
     Type: String
-    Default: EKSClusterRole
+    Default: EksClusterRole
+    Description: The name of the IAM role for the EKS service to assume.
+  EKSIAMNodeGroupRole:
+    Type: String
+    Default: EksNodeGroupRole
     Description: The name of the IAM role for the EKS service to assume.
   EKSKeyPair:
     Type: "AWS::EC2::KeyPair::KeyName"
@@ -494,6 +498,7 @@ Resources:
   EksIAMRole:
     Type: AWS::IAM::Role
     Properties:
+      RoleName: !Ref EKSIAMRoleName
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -503,7 +508,6 @@ Resources:
               - eks.amazonaws.com
             Action:
             - 'sts:AssumeRole'
-      RoleName: !Ref EKSIAMRoleName
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
 
@@ -525,7 +529,9 @@ Resources:
 
   EksNodeInstanceRole:
     Type: AWS::IAM::Role
+    DependsOn: [ EksCluster ]
     Properties:
+      RoleName: !Ref EKSIAMNodeGroupRole
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -541,13 +547,14 @@ Resources:
         - !Sub "arn:${AWS::Partition}:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
         - !Sub "arn:${AWS::Partition}:iam::aws:policy/AmazonAPIGatewayAdministrator"
       Policies:
-        - PolicyName: IAMCreateServiceLikedRole
+        - PolicyName: "IAMCreateServiceLikedRole"
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
-              - Effect: Allow,
-                Action: iam:CreateServiceLinkedRole,
-                Resource": !Ref EksCluster
+              - Effect: Allow
+                Action: iam:CreateServiceLinkedRole
+                Resource: 
+                  "Fn::GetAtt": ["EksCluster", "Arn"]
       Path: /
 
   EksNodeGroup:

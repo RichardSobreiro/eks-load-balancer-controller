@@ -5,8 +5,8 @@ metadata:
 spec:
   name: nlb-internal
   securityGroupIDs: 
-    - sg-0a736574b19725498
+    - sg-0fdad8ff734204d58
   subnetIDs: 
-    - subnet-019b954a5832c5cdb
-    - subnet-09d04df505bcafe3b
-    - subnet-0005fed6abc01be8b
+    - subnet-0cecef759724ea219
+    - subnet-0828a1930bdf45b60
+    - subnet-0ac010bb1e722af0a
