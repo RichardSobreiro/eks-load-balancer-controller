@@ -1,6 +1,6 @@
 # Eks Load Balancer Controller
 
-Creation of a eks cluster with load balancer controller and aws controller for kubernetes (ACK).
+Creation of an AWS EKS cluster with load balancer controller and aws controller for kubernetes (ACK).
 The load balancer controller is responsible for the creation of two network load balancers, one for each deployment.
 
 <p align="center">
